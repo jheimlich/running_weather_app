@@ -1,0 +1,144 @@
+body {
+  font-family: "Arial", sans-serif;
+  background-color: #f4f4f4;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+.App {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h1,
+h2,
+h3 {
+  color: #333;
+}
+
+.mode-toggle {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.mode-button {
+  padding: 10px 20px;
+  margin: 0 5px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.mode-button.active {
+  background-color: #367c39;
+}
+
+.mode-button:hover {
+  background-color: #66bb6a;
+}
+
+.city-select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.city-select label {
+  margin-right: 10px;
+}
+
+select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.status,
+.error {
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+
+.status {
+  background-color: #e7f3fe;
+  border: 1px solid #a9d0f5;
+  color: #31708f;
+}
+
+.error {
+  background-color: #fdd;
+  border: 1px solid #faa;
+  color: #a00;
+}
+
+.weather-info {
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.weather-category {
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+.planning-mode {
+  margin-bottom: 20px;
+}
+
+.planning-inputs .input-group {
+  margin-bottom: 10px;
+}
+
+.planning-inputs label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+input[type="number"],
+select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.recommendations {
+  background-color: #e6ffe6;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.rec-section {
+  margin-bottom: 15px;
+}
+
+.rec-section h3 {
+  margin-bottom: 5px;
+}
+
+.rec-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.rec-section li {
+  background-color: #cce0cc;
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+}
