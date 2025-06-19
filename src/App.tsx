@@ -26,6 +26,15 @@ interface WeatherData {
   dt: number;
 }
 
+interface CityOption {
+  name: string;
+  state?: string;
+  country: string;
+  lat: number;
+  lon: number;
+  display: string;
+}
+
 interface ClothingRecommendations {
   top: string[];
   bottom: string[];
@@ -472,6 +481,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState("");
+  const [cityOptions, setCityOptions] = useState<CityOption[]>([]);
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [runType, setRunType] = useState("easy");
   const [recommendations, setRecommendations] =
     useState<ClothingRecommendations | null>(null);
@@ -482,24 +493,99 @@ export default function App() {
   const [showGearSection, setShowGearSection] = useState(false);
   const [uvIndex] = useState(3); // Would fetch from UV API in production
   const [darkMode, setDarkMode] = useState(false);
+  const [useFahrenheit, setUseFahrenheit] = useState(true); // Default to Fahrenheit for US users
 
-  const fetchWeatherByCity = async (cityName: string) => {
-    setLoading(true);
+  // Convert temperature based on user preference
+  const convertTemp = (tempC: number): number => {
+    return useFahrenheit ? (tempC * 9) / 5 + 32 : tempC;
+  };
+
+  const formatTemp = (tempC: number): string => {
+    const converted = convertTemp(tempC);
+    const unit = useFahrenheit ? "°F" : "°C";
+    return `${Math.round(converted)}${unit}`;
+  };
+
+  // Search for cities using OpenWeather Geocoding API
+  const searchCities = async (query: string) => {
+    if (query.length < 2) {
+      setCityOptions([]);
+      setShowCityDropdown(false);
+      return;
+    }
+
     try {
       const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${cityName}&units=metric&appid=${API_KEY}`
+        `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(
+          query
+        )}&limit=5&appid=${API_KEY}`
       );
+      const cities = await response.json();
+
+      const cityOptions: CityOption[] = cities.map((city: any) => ({
+        name: city.name,
+        state: city.state,
+        country: city.country,
+        lat: city.lat,
+        lon: city.lon,
+        display: city.state
+          ? `${city.name}, ${city.state}, ${city.country}`
+          : `${city.name}, ${city.country}`,
+      }));
+
+      setCityOptions(cityOptions);
+      setShowCityDropdown(cityOptions.length > 0);
+    } catch (err) {
+      console.error("Error searching cities:", err);
+      setCityOptions([]);
+      setShowCityDropdown(false);
+    }
+  };
+
+  // Debounced city search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (location) {
+        searchCities(location);
+      } else {
+        setCityOptions([]);
+        setShowCityDropdown(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [location]);
+
+  const selectCity = (city: CityOption) => {
+    setLocation(city.display);
+    setShowCityDropdown(false);
+    fetchWeatherByCoordinates(city.lat, city.lon, city.display);
+  };
+
+  const fetchWeatherByCoordinates = async (
+    lat: number,
+    lon: number,
+    cityDisplay?: string
+  ) => {
+    setLoading(true);
+    try {
+      // Always fetch in metric (Celsius) to keep logic consistent
+      const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`;
+      const response = await fetch(weatherUrl);
       const data = await response.json();
 
       if (response.ok) {
         setWeather(data);
         setError(null);
+        if (cityDisplay) {
+          setLocation(cityDisplay);
+        }
       } else {
         throw new Error(data.message || "Failed to fetch weather");
       }
     } catch (err) {
       console.error("Error:", err);
-      setError("Failed to fetch weather data for the city");
+      setError("Failed to fetch weather data");
     } finally {
       setLoading(false);
     }
@@ -510,24 +596,8 @@ export default function App() {
       setLoading(true);
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          try {
-            const { latitude, longitude } = position.coords;
-            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${API_KEY}`;
-            const response = await fetch(weatherUrl);
-            const data = await response.json();
-
-            if (response.ok) {
-              setWeather(data);
-              setError(null);
-            } else {
-              throw new Error(data.message || "Failed to fetch weather");
-            }
-          } catch (err) {
-            console.error("Error:", err);
-            setError("Failed to fetch weather data");
-          } finally {
-            setLoading(false);
-          }
+          const { latitude, longitude } = position.coords;
+          await fetchWeatherByCoordinates(latitude, longitude);
         },
         () => {
           setError("Please enable location services or enter a city name");
@@ -546,6 +616,7 @@ export default function App() {
       const now = new Date().getTime() / 1000;
       const isNight = now < weather.sys.sunrise || now > weather.sys.sunset;
 
+      // Weather data is always in Celsius, so use directly
       const recs = getEnhancedClothingRecommendations(
         weather.main.temp,
         weather.main.feels_like,
@@ -575,7 +646,7 @@ export default function App() {
       );
       setGearRecommendations(gearRecs);
     }
-  }, [weather, runType, uvIndex]);
+  }, [weather, runType, uvIndex]); // Removed useFahrenheit dependency since it doesn't affect logic
 
   const toggleChecklistItem = (id: string) => {
     setChecklist((prev) =>
@@ -885,27 +956,110 @@ export default function App() {
       <div style={styles.card}>
         <div style={styles.header}>
           <h1 style={styles.title}>🏃‍♂️ Running Weather Advisor</h1>
-          <button
-            style={styles.darkModeButton}
-            onClick={() => setDarkMode(!darkMode)}
-          >
-            {darkMode ? "☀️" : "🌙"}
-          </button>
+          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <button
+              onClick={() => setUseFahrenheit(!useFahrenheit)}
+              style={{
+                padding: "8px 16px",
+                borderRadius: "12px",
+                border: "none",
+                background: darkMode
+                  ? "rgba(55, 65, 81, 0.5)"
+                  : "rgba(255, 255, 255, 0.8)",
+                color: darkMode ? "#f8fafc" : "#1e293b",
+                fontSize: "0.9rem",
+                fontWeight: "500",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+              }}
+            >
+              {useFahrenheit ? "°F" : "°C"}
+            </button>
+            <button
+              style={styles.darkModeButton}
+              onClick={() => setDarkMode(!darkMode)}
+            >
+              {darkMode ? "☀️" : "🌙"}
+            </button>
+          </div>
         </div>
 
-        <div style={styles.inputContainer}>
-          <input
-            type="text"
-            placeholder="Enter city name"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            onKeyPress={(e) =>
-              e.key === "Enter" && location && fetchWeatherByCity(location)
-            }
-            style={styles.input}
-          />
+        <div style={{ ...styles.inputContainer, position: "relative" }}>
+          <div style={{ flex: 1, position: "relative" }}>
+            <input
+              type="text"
+              placeholder="Enter city name"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter" && cityOptions.length > 0) {
+                  selectCity(cityOptions[0]);
+                } else if (e.key === "Escape") {
+                  setShowCityDropdown(false);
+                }
+              }}
+              onFocus={() => {
+                if (cityOptions.length > 0) setShowCityDropdown(true);
+              }}
+              style={styles.input}
+            />
+            {showCityDropdown && cityOptions.length > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  background: darkMode ? "#374151" : "white",
+                  border: darkMode ? "1px solid #4b5563" : "1px solid #d1d5db",
+                  borderRadius: "8px",
+                  boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15)",
+                  zIndex: 1000,
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                }}
+              >
+                {cityOptions.map((city, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => selectCity(city)}
+                    style={{
+                      padding: "12px 16px",
+                      cursor: "pointer",
+                      borderBottom:
+                        idx < cityOptions.length - 1
+                          ? darkMode
+                            ? "1px solid #4b5563"
+                            : "1px solid #e5e7eb"
+                          : "none",
+                      transition: "background-color 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = darkMode
+                        ? "#4b5563"
+                        : "#f3f4f6";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                  >
+                    <div style={{ fontWeight: "500" }}>{city.name}</div>
+                    <div style={{ fontSize: "0.8rem", opacity: 0.7 }}>
+                      {city.state
+                        ? `${city.state}, ${city.country}`
+                        : city.country}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <button
-            onClick={() => location && fetchWeatherByCity(location)}
+            onClick={() => {
+              if (cityOptions.length > 0) {
+                selectCity(cityOptions[0]);
+              }
+            }}
             style={styles.button}
           >
             Search
@@ -979,6 +1133,17 @@ export default function App() {
                   }}
                 >
                   {weather.name}
+                  {weather.sys.country && (
+                    <span
+                      style={{
+                        fontSize: "1.2rem",
+                        opacity: 0.8,
+                        fontWeight: "normal",
+                      }}
+                    >
+                      , {weather.sys.country}
+                    </span>
+                  )}
                 </h2>
                 <p
                   style={{
@@ -992,9 +1157,9 @@ export default function App() {
                 </p>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={styles.temp}>{Math.round(weather.main.temp)}°C</div>
+                <div style={styles.temp}>{formatTemp(weather.main.temp)}</div>
                 <div style={styles.feelsLike}>
-                  Feels like {Math.round(weather.main.feels_like)}°C
+                  Feels like {formatTemp(weather.main.feels_like)}
                 </div>
               </div>
             </div>
@@ -1004,7 +1169,11 @@ export default function App() {
                 style={{ display: "flex", alignItems: "center", gap: "8px" }}
               >
                 <span>💨</span>
-                <span>Wind: {Math.round(weather.wind.speed)} m/s</span>
+                <span>
+                  Wind:{" "}
+                  {Math.round(weather.wind.speed * (useFahrenheit ? 2.237 : 1))}{" "}
+                  {useFahrenheit ? "mph" : "m/s"}
+                </span>
               </div>
               <div
                 style={{ display: "flex", alignItems: "center", gap: "8px" }}
