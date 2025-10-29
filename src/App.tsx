@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import EmailCapture from "./EmailCapture";
 
 interface UserPreferences {
   useFahrenheit: boolean;
@@ -445,6 +446,7 @@ export default function App() {
   const [gearRecommendations, setGearRecommendations] = useState<GearRecommendation[]>([]);
   const [showGearSection, setShowGearSection] = useState(false);
   const [uvIndex] = useState(3); // Would fetch from UV API in production
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   // Derived state from preferences
   const useFahrenheit = preferences.useFahrenheit;
@@ -598,6 +600,18 @@ export default function App() {
     getCurrentLocation();
   }, []);
 
+  // Show email modal after 10 seconds if they haven't subscribed
+   useEffect(() => {
+     const hasSubscribed = localStorage.getItem("subscribedEmail");
+     const modalTimer = setTimeout(() => {
+       if (!hasSubscribed) {
+         setShowEmailModal(true);
+       }
+     }, 10000); // Show after 10 seconds
+
+     return () => clearTimeout(modalTimer);
+   }, []);
+  
   useEffect(() => {
     if (weather) {
       const now = new Date().getTime() / 1000;
@@ -1363,6 +1377,10 @@ export default function App() {
             )}
           </div>
         </>
+      )}
+      {/* Email Capture Modal */}
+      {showEmailModal && (
+        <EmailCapture onClose={() => setShowEmailModal(false)} />
       )}
     </div>
   );
