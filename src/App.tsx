@@ -957,6 +957,48 @@ export default function App() {
           </div>
         </div>
 
+        <div style={{
+        textAlign: 'center',
+        marginBottom: '20px'
+      }}>
+        <a
+          href="/blog/chicago"
+          target="_blank"
+          style={{
+            display: 'inline-block',
+            padding: '12px 24px',
+            margin: '0 8px',
+            background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '12px',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          📍 Chicago Guide
+        </a>
+        <a
+          href="/blog/40-degrees"
+          target="_blank"
+          style={{
+            display: 'inline-block',
+            padding: '12px 24px',
+            margin: '0 8px',
+            background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '12px',
+            fontSize: '0.9rem',
+            fontWeight: '600',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          🌡️ 40° Weather Guide
+        </a>
+      </div>
+        
         <div style={{ ...styles.inputContainer, position: 'relative' }}>
           <div style={{ flex: 1, position: 'relative' }}>
             <input
